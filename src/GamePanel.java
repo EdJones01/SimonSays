@@ -39,7 +39,7 @@ public class GamePanel extends JPanel implements ActionListener {
 
     private void reset() {
         allowShow = true;
-        flashAllButtons();
+        loseButtonFlash();
         sequence.clear();
         addToSequence();
     }
@@ -50,7 +50,7 @@ public class GamePanel extends JPanel implements ActionListener {
             showingSequence = true;
             Tools.runInNewThread(() -> {
                 for (int id : sequence) {
-                    flashButton(buttons[id]);
+                    flashButton(buttons[id], flashDelay);
                     try {
                         Thread.sleep(flashDelay * 2);
                     } catch (InterruptedException e) {
@@ -76,11 +76,11 @@ public class GamePanel extends JPanel implements ActionListener {
         sequence.add(random.nextInt(4));
     }
 
-    private void flashButton(JButton button) {
+    private void flashButton(JButton button, int duration) {
         Tools.runInNewThread(() -> {
             button.setBackground(button.getBackground().brighter().brighter());
             try {
-                Thread.sleep(500);
+                Thread.sleep(duration);
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);
             }
@@ -88,9 +88,35 @@ public class GamePanel extends JPanel implements ActionListener {
         });
     }
 
+    private void loseButtonFlash() {
+        int[] order = new int[] {0, 1, 3, 2};
+        Tools.runInNewThread(() -> {
+            for (int i = 0; i < buttons.length; i++) {
+               lastClickTime = System.currentTimeMillis();
+                flashButton(buttons[order[i]], flashDelay/2);
+                try {
+                    Thread.sleep(flashDelay/2);
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        });
+    }
+
     private void flashAllButtons() {
-        for (JButton button : buttons)
-            flashButton(button);
+
+        Tools.runInNewThread(() -> {
+            try {
+                Thread.sleep(flashDelay);
+                lastClickTime = System.currentTimeMillis();
+                Thread.sleep(flashDelay);
+                lastClickTime = System.currentTimeMillis();
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+            for (JButton button : buttons)
+                flashButton(button, flashDelay);
+        });
     }
 
     private boolean checkLose() {
@@ -113,9 +139,10 @@ public class GamePanel extends JPanel implements ActionListener {
                 reset();
                 inputSequence.clear();
             } else {
-                flashButton((JButton) e.getSource());
+                flashButton((JButton) e.getSource(), flashDelay);
 
                 if (inputSequence.size() == sequence.size()) {
+                    flashAllButtons();
                     allowShow = true;
                     addToSequence();
                     inputSequence.clear();
